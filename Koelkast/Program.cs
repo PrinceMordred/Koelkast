@@ -16,9 +16,10 @@ namespace Koelkast
             //make map
             char[,] map = new char[b,h];
             HashSet<int> hSet = new HashSet<int>();
-            Point koelkastPos;
-            Point goal;
-            Point koen;
+            Queue<char[,]> qSet = new Queue<char[,]>();
+            Point koelkastPos = new Point();
+            Point goal = new Point();
+            Point koen = new Point();
             //find positions
             for (int i = 0; i < h; i++)
             {
@@ -35,58 +36,85 @@ namespace Koelkast
                 }
             }
             //find solution
-            BreadthFirstSearch(map, hSet);
+            BreadthFirstSearch(map, koen, koelkastPos, goal, hSet, qSet, true);
 
-            //print map
-            //Console.WriteLine(printMap(map));
 
             //print solution
             Console.WriteLine(m.Equals("P") ? outp : outp.Length);
         }
 
-        private static void BreadthFirstSearch(char[,] arr, HashSet<int> hMap)
+        private static void BreadthFirstSearch(char[,] arr, Point koen, Point koelkast, Point goal, HashSet<int> hMap, Queue<char[,]> queue, bool first)
         {
-            // make arrays for tests
-            char[,] state = new char[arr.GetLength(0), arr.GetLength(1)];
-            char[] stateList = new char[arr.Length];
-            int b = arr.GetLength(0);
-            int h = arr.GetLength(1);
-            if(true) //pos !in hMap) ____________________________________________________
+            
+            //check if node is searched
+            
+            while (queue.Count>0 || first)
             {
+                first = false;
+                
+                //if()
 
-                for (int i = 0; i < h; i++)
+                for (int i = 0; i < 4; i++)
                 {
-                    for (int j = 0; j < b; j++)
+                    int x = 0;
+                    int y = 0;
+                    if (i == 0)
+                        y = 1;
+                    if (i == 1)
+                        x = 1;
+                    if (i == 2)
+                        y = -1;
+                    if (i == 3)
+                        x = -1;
+                    Point dir = new Point(x,y);
+
+                    
+                    if (Steppable(koen, new Point(koen.X + dir.X, koen.Y + dir.Y), koelkast, arr))
                     {
-                        state[j, i] = arr[j, i];
+                        char[,] succ = new char[arr.GetLength(0), arr.GetLength(1)];
+                        for (int a = 0; a < arr.GetLength(1); a++)
+                        {
+                            for (int b = 0; b < arr.GetLength(0); b++)
+                            {
+                                succ[b, a] = arr[b, a];
+                            }
+                        }
+
+                        Step(koen, new Point(koen.X +dir.X, koen.Y + dir.Y),koelkast, succ);
+                        queue.Enqueue(succ);
                     }
                 }
-                hMap.Add(state); // add to hMap
-
-                //start breadth search based on if step has already been visited or if step is possible and check for end
-                //then queue next nodes
-
-                for (int i = 0; i < 4; i++) // 4 because of directions
-                {
-                    if (Steppable(()) &&
-    
-            }
             }
             
         }
 
-        static bool Steppable(Point pos, int up, int right, char[,] arr)
+        static bool Steppable(Point a, Point b, Point koelkast, char[,] arr)
         {
-            char temp = arr[pos.X + right, pos.Y - up];
-            return temp.Equals('.') || temp.Equals('!');
+            // if both points are '.', '+' or '!'
+            char aa = arr[a.X, a.Y]; 
+            char bb = arr[b.X, b.Y];
+            if (b.Equals(koelkast))
+            {
+                int xDiff = a.X - b.X;
+                int yDiff = a.Y - b.Y;
+                Point nextKPos = new Point(b.X-xDiff, b.Y -yDiff);
+                return Steppable(b, nextKPos, koelkast, arr);
+            }
+            return (aa.Equals('.') || aa.Equals('!') || aa.Equals('+')) && (bb.Equals('.') || bb.Equals('!') || bb.Equals('+'));
 
         }
-        static void Step(Point a, Point b, char[,] arr)
+        static void Step(Point a, Point b, Point koelkast, char[,] arr)
         {
             char temp = arr[a.X, a.Y];
             arr[a.X, a.Y] = arr[b.X, b.Y];
             arr[b.X, b.Y] = temp;
-            // add fridge move
+            if (b.Equals(koelkast))
+            {
+                int xDiff = a.X - b.X;
+                int yDiff = a.Y - b.Y;
+                Point nextKPos = new Point(b.X - xDiff, b.Y - yDiff);
+                Step(b, nextKPos, koelkast, arr);
+            }
         }
         static string printMap(char[,] m)
         {
