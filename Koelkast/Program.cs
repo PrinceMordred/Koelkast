@@ -5,6 +5,7 @@ namespace Koelkast
 {
     internal class Program
     {
+        static Dictionary<uint, uint> hSet = new Dictionary<uint, uint>();
         static void Main()
         {
             //innits
@@ -13,108 +14,118 @@ namespace Koelkast
             int h = int.Parse(inp[1]);
             string m = inp[2];
             string outp = "";
+
             //make map
-            char[,] map = new char[b,h];
-            HashSet<int> hSet = new HashSet<int>();
-            Queue<char[,]> qSet = new Queue<char[,]>();
+            byte[,] map = new byte[b, h];
+
+            Queue<uint> qSet = new Queue<uint>();
             Point koelkastPos = new Point();
-            Point goal = new Point();
             Point koen = new Point();
             //find positions
             for (int i = 0; i < h; i++)
             {
-                inp = Console.ReadLine().Split();
+                string inp2 = Console.ReadLine();
                 for (int j = 0; j < b; j++)
                 {
-                    map[j, i] = inp[0][j];
-                    if (map[j, i].Equals('!'))
-                        koelkastPos = new Point(j, i);
-                    else if (map[j,i].Equals('?'))
-                        goal = new Point(j, i);
-                    else if (map[j, i].Equals('+'))
-                        koen = new Point(j, i);
-                }
-            }
-            //find solution
-            BreadthFirstSearch(map, koen, koelkastPos, goal, hSet, qSet, true);
-
-
-            //print solution
-            Console.WriteLine(m.Equals("P") ? outp : outp.Length);
-        }
-
-        private static void BreadthFirstSearch(char[,] arr, Point koen, Point koelkast, Point goal, HashSet<int> hMap, Queue<char[,]> queue, bool first)
-        {
-            
-            //check if node is searched
-            
-            while (queue.Count>0 || first)
-            {
-                first = false;
-                
-                //if()
-
-                for (int i = 0; i < 4; i++)
-                {
-                    int x = 0;
-                    int y = 0;
-                    if (i == 0)
-                        y = 1;
-                    if (i == 1)
-                        x = 1;
-                    if (i == 2)
-                        y = -1;
-                    if (i == 3)
-                        x = -1;
-                    Point dir = new Point(x,y);
-
-                    
-                    if (Steppable(koen, new Point(koen.X + dir.X, koen.Y + dir.Y), koelkast, arr))
+                    switch (inp2[j])
                     {
-                        char[,] succ = new char[arr.GetLength(0), arr.GetLength(1)];
-                        for (int a = 0; a < arr.GetLength(1); a++)
-                        {
-                            for (int b = 0; b < arr.GetLength(0); b++)
-                            {
-                                succ[b, a] = arr[b, a];
-                            }
-                        }
-
-                        Step(koen, new Point(koen.X +dir.X, koen.Y + dir.Y),koelkast, succ);
-                        queue.Enqueue(succ);
+                        case '.':
+                            map[j, i] = 1;
+                            break;
+                        case '!':
+                            koelkastPos = new Point(j, i);
+                            map[j, i] = 2;
+                            break;
+                        case '?':
+                            map[j, i] = 3;
+                            break;
+                        case '+':
+                            koen = new Point(j, i);
+                            map[j, i] = 4;
+                            break;
+                        default:
+                            map[j, i] = 0;
+                            break;
                     }
                 }
             }
-            
+
+            //print solution
+
+            uint state = BreadthFirstSearch(map, koen, koelkastPos, qSet);
+            if (state == 0)
+                Console.WriteLine("No solution");
+            else
+            {
+                outp = Directions(state);
+                Console.WriteLine(outp.Length);
+                if (m.Equals("P"))
+                    Console.WriteLine(outp);
+            }
         }
 
-        static bool Steppable(Point a, Point b, Point koelkast, char[,] arr)
+        private static uint BreadthFirstSearch(byte[,] arr, Point koen, Point koelkast, Queue<uint> queue)
         {
-            // if both points are '.', '+' or '!'
-            char aa = arr[a.X, a.Y]; 
-            char bb = arr[b.X, b.Y];
-            if (b.Equals(koelkast))
-            {
-                int xDiff = a.X - b.X;
-                int yDiff = a.Y - b.Y;
-                Point nextKPos = new Point(b.X-xDiff, b.Y -yDiff);
-                return Steppable(b, nextKPos, koelkast, arr);
-            }
-            return (aa.Equals('.') || aa.Equals('!') || aa.Equals('+')) && (bb.Equals('.') || bb.Equals('!') || bb.Equals('+'));
 
-        }
-        static void Step(Point a, Point b, Point koelkast, char[,] arr)
-        {
-            char temp = arr[a.X, a.Y];
-            arr[a.X, a.Y] = arr[b.X, b.Y];
-            arr[b.X, b.Y] = temp;
-            if (b.Equals(koelkast))
+            //check if node is searched
+            uint state = State(koen, koelkast);
+            hSet.Add(state, 0);
+            queue.Enqueue(state);
+            while (queue.Count > 0)
             {
-                int xDiff = a.X - b.X;
-                int yDiff = a.Y - b.Y;
-                Point nextKPos = new Point(b.X - xDiff, b.Y - yDiff);
-                Step(b, nextKPos, koelkast, arr);
+                uint u = queue.Dequeue();
+                uint[] next = Successor(u, arr);
+                foreach (uint v in next)
+                {
+                    if (v == 0)
+                        continue;
+                    Point kkp = KoelkastPos(v);
+                    if (arr[kkp.X, kkp.Y] == 3)
+                    {
+                        hSet.Add(v, u);
+                        return v;
+                    }
+
+                    try
+                    {
+                        hSet.Add(v, u);
+                        queue.Enqueue(v);
+                    }
+                    catch { };
+                }
             }
+            return 0;
+        }
+
+        private static uint[] Successor(uint u, byte[,] arr)
+        {
+            uint[] res = new uint[4];
+            res[0] = Step(u, 1, 0, arr);
+            res[1] = Step(u, 0, 1, arr);
+            res[2] = Step(u, -1, 0, arr);
+            res[3] = Step(u, 0, -1, arr);
+            return res;
+        }
+
+        static uint Step(uint state, int right, int down, byte[,] arr)
+        {
+            Point kkp = KoelkastPos(state);
+            Point kp = KoenPos(state);
+
+            kp.X += right;
+            kp.Y += down;
+
+            if (arr[kp.X, kp.Y] == 0)
+                return 0;
+            if (kkp.X == kp.X && kkp.Y == kp.Y)
+            {
+                kkp.X += right;
+                kkp.Y += down;
+                if (arr[kkp.X, kkp.Y] == 0)
+                    return 0;  
+            }
+            return State(kp, kkp);
+                
         }
         static string printMap(char[,] m)
         {
@@ -128,6 +139,30 @@ namespace Koelkast
                 outp += "\n";
             }
             return outp;
+        }
+        static uint State(Point koen, Point koelkast)
+        {
+            // (koen)(koelkast)
+            return (uint)(koen.X | (koen.Y << 8) | (koelkast.X << 16) | (koelkast.Y << 24)) ;
+        }
+        static Point KoelkastPos(uint state) => new Point((int)(state >> 16) & 255, (int)(state >> 24) & 255);
+        static Point KoenPos(uint state) => new Point((int)state & 255, (int)(state >> 8) & 255);
+        static string Directions(uint endState)
+        {
+            string res = "";
+            uint old = endState;
+            uint current = hSet[endState];
+            while (current != 0)
+            {
+                Point kC = KoenPos(current);
+                Point kO = KoenPos(old);
+                Point offset = new Point(kO.X - kC.X,  kO.Y- kC.Y);
+                old = current;
+                current = hSet[current];
+
+                res = "NWXES"[offset.X + offset.Y * 2 + 2] + res; //credits Olaf, we hadden samen bedacht dat strings arrays zijn <3 (dit is geen plagiaat)
+            }
+            return res;
         }
     }
 }
